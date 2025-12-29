@@ -1,0 +1,25 @@
+# Nix build outputs
+result
+result-*
+
+# Build output directories
+dist/
+
+# Qt source (fetched by build.sh)
+qt-src/
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Claude Code
+.claude/
+
+ROADMAP.md
