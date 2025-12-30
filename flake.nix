@@ -12,10 +12,14 @@
 
       # Qt version configuration
       qtVersion = "6.8.3";
-      qtMajor = "6.8";
 
-      # Local Qt source (our fork - qt5 supermodule with qtbase)
-      qt6Source = ./qt-src;
+      # Local Qt source (use --impure flag to access non-git-tracked path)
+      # QT_SRC_PATH env var set by build.sh, fallback to ./qt-src/qtbase
+      qtSrcPath = builtins.getEnv "QT_SRC_PATH";
+      qt6Source = builtins.path {
+        path = if qtSrcPath != "" then /. + qtSrcPath else ./qt-src/qtbase;
+        name = "qtbase-source";
+      };
 
       # Linux build from local fork
       qt6Linux = pkgs.callPackage ./nix/linux.nix {

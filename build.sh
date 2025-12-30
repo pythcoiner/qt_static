@@ -8,7 +8,7 @@ TARGET="${1:-all}"
 
 echo "=== Qt6 Static Build ==="
 
-# ---- Phase 1: Fetch Qt source ----
+# ---- Phase 1: Fetch Qt source (only if needed) ----
 QT_BRANCH="qt_static_6.8.3"
 QT_REPO="https://github.com/pythcoiner/qt5.git"
 
@@ -54,11 +54,94 @@ else
     cd "$SCRIPT_DIR"
 fi
 
+# Set absolute path for nix flake
+export QT_SRC_PATH="$SCRIPT_DIR/qt-src/qtbase"
+echo "Using Qt source: $QT_SRC_PATH"
+
 # ---- Phase 2: Build functions ----
+compute_hashes() {
+    echo ""
+    echo "=== Computing Build Hashes ==="
+
+    local manifest="dist/SHA256SUMS"
+    > "$manifest"  # Clear/create manifest
+
+    # Compute hashes for each target
+    for target in linux windows; do
+        local dir="dist/$target"
+        if [ -d "$dir" ]; then
+            echo "Hashing $target..."
+            (cd dist && find "$target" -type f -exec sha256sum {} \; | sort -k2) >> "$manifest"
+        fi
+    done
+
+    echo ""
+    echo "Manifest: $manifest"
+
+    # Print easy-to-copy hashes
+    echo ""
+    echo "=== Target Hashes ==="
+    for target in linux windows; do
+        if grep -q "^[a-f0-9]* *$target/" "$manifest" 2>/dev/null; then
+            TARGET_HASH=$(grep "^[a-f0-9]* *$target/" "$manifest" | sha256sum | cut -d' ' -f1)
+            echo "$target $TARGET_HASH"
+        fi
+    done
+}
+
+sign_hashes() {
+    local manifest="dist/SHA256SUMS"
+
+    if [ ! -f "$manifest" ]; then
+        echo "Error: $manifest not found. Run './build.sh hash' first."
+        exit 1
+    fi
+
+    echo ""
+    echo "=== Signing manifest ==="
+
+    gpg --armor --detach-sign --output "$manifest.sig" "$manifest"
+
+    echo "Signature: $manifest.sig"
+}
+
+verify_hashes() {
+    local manifest="dist/SHA256SUMS"
+    local sig="$manifest.sig"
+
+    echo ""
+    echo "=== Verifying Build ==="
+
+    # Verify GPG signature if present
+    if [ -f "$sig" ]; then
+        echo "Verifying GPG signature..."
+        if gpg --verify "$sig" "$manifest" 2>/dev/null; then
+            echo "Signature: VALID"
+        else
+            echo "Signature: INVALID"
+            exit 1
+        fi
+    else
+        echo "Signature: not found (skipping)"
+    fi
+
+    # Verify file hashes
+    echo ""
+    echo "Verifying file hashes..."
+    if (cd dist && sha256sum -c SHA256SUMS); then
+        echo ""
+        echo "All hashes: VALID"
+    else
+        echo ""
+        echo "Hash verification: FAILED"
+        exit 1
+    fi
+}
+
 build_linux() {
     echo ""
     echo "=== Building Linux static Qt ==="
-    nix build .#linux -o result-linux
+    nix build .#linux -o result-linux --impure
 
     echo "Packaging to dist/linux/..."
     rm -rf dist/linux
@@ -71,7 +154,7 @@ build_linux() {
 build_windows() {
     echo ""
     echo "=== Building Windows static Qt ==="
-    nix build .#windows -o result-windows
+    nix build .#windows -o result-windows --impure
 
     echo "Packaging to dist/windows/..."
     rm -rf dist/windows
@@ -85,20 +168,38 @@ build_windows() {
 case "$TARGET" in
     linux)
         build_linux
+        compute_hashes
         ;;
     windows)
         build_windows
+        compute_hashes
         ;;
     all)
         build_linux
         build_windows
+        compute_hashes
+        ;;
+    hash)
+        # Standalone hash command - process existing dist/*
+        compute_hashes
+        ;;
+    sign)
+        # Sign the manifest
+        sign_hashes
+        ;;
+    verify)
+        # Verify hashes and signature
+        verify_hashes
         ;;
     *)
-        echo "Usage: $0 [linux|windows|all]"
+        echo "Usage: $0 [linux|windows|all|hash|sign|verify]"
         echo ""
         echo "  linux    Build Linux static Qt only"
         echo "  windows  Build Windows static Qt only (cross-compiled)"
         echo "  all      Build both targets (default)"
+        echo "  hash     Compute hashes for existing builds in dist/"
+        echo "  sign     GPG sign hash manifest"
+        echo "  verify   Verify hashes and GPG signature"
         exit 1
         ;;
 esac
