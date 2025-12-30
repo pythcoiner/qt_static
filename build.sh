@@ -67,11 +67,11 @@ compute_hashes() {
     > "$manifest"  # Clear/create manifest
 
     # Compute hashes for each target
-    for target in linux windows; do
+    for target in linux macos-arm macos-x86 windows; do
         local dir="dist/$target"
         if [ -d "$dir" ]; then
             echo "Hashing $target..."
-            (cd dist && find "$target" -type f -exec sha256sum {} \; | sort -k2) >> "$manifest"
+            (cd dist && find "$target" -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum) >> "$manifest"
         fi
     done
 
@@ -81,10 +81,10 @@ compute_hashes() {
     # Print easy-to-copy hashes
     echo ""
     echo "=== Target Hashes ==="
-    for target in linux windows; do
+    for target in linux macos-arm macos-x86 windows; do
         if grep -q "^[a-f0-9]* *$target/" "$manifest" 2>/dev/null; then
             TARGET_HASH=$(grep "^[a-f0-9]* *$target/" "$manifest" | sha256sum | cut -d' ' -f1)
-            echo "$target $TARGET_HASH"
+            printf "%-10s %s\n" "$target" "$TARGET_HASH"
         fi
     done
 }
@@ -164,6 +164,32 @@ build_windows() {
     echo "Windows build complete: dist/windows/"
 }
 
+build_macos_arm() {
+    echo ""
+    echo "=== Building macOS ARM static Qt ==="
+    nix build '.#aarch64-apple-darwin' -o result-macos-arm --impure
+
+    echo "Packaging to dist/macos-arm/..."
+    rm -rf dist/macos-arm
+    mkdir -p dist/macos-arm
+    cp -rL result-macos-arm/* dist/macos-arm/
+
+    echo "macOS ARM build complete: dist/macos-arm/"
+}
+
+build_macos_x86() {
+    echo ""
+    echo "=== Building macOS x86 static Qt ==="
+    nix build '.#x86_64-apple-darwin' -o result-macos-x86 --impure
+
+    echo "Packaging to dist/macos-x86/..."
+    rm -rf dist/macos-x86
+    mkdir -p dist/macos-x86
+    cp -rL result-macos-x86/* dist/macos-x86/
+
+    echo "macOS x86 build complete: dist/macos-x86/"
+}
+
 # ---- Phase 3: Target selection ----
 case "$TARGET" in
     linux)
@@ -174,9 +200,24 @@ case "$TARGET" in
         build_windows
         compute_hashes
         ;;
+    macos-arm)
+        build_macos_arm
+        compute_hashes
+        ;;
+    macos-x86)
+        build_macos_x86
+        compute_hashes
+        ;;
+    macos)
+        build_macos_arm
+        build_macos_x86
+        compute_hashes
+        ;;
     all)
         build_linux
         build_windows
+        build_macos_arm
+        build_macos_x86
         compute_hashes
         ;;
     hash)
@@ -192,14 +233,17 @@ case "$TARGET" in
         verify_hashes
         ;;
     *)
-        echo "Usage: $0 [linux|windows|all|hash|sign|verify]"
+        echo "Usage: $0 [linux|windows|macos-arm|macos-x86|macos|all|hash|sign|verify]"
         echo ""
-        echo "  linux    Build Linux static Qt only"
-        echo "  windows  Build Windows static Qt only (cross-compiled)"
-        echo "  all      Build both targets (default)"
-        echo "  hash     Compute hashes for existing builds in dist/"
-        echo "  sign     GPG sign hash manifest"
-        echo "  verify   Verify hashes and GPG signature"
+        echo "  linux      Build Linux static Qt only"
+        echo "  windows    Build Windows static Qt only (cross-compiled)"
+        echo "  macos-arm  Build macOS ARM static Qt only (cross-compiled)"
+        echo "  macos-x86  Build macOS x86 static Qt only (cross-compiled)"
+        echo "  macos      Build both macOS targets"
+        echo "  all        Build all targets (default)"
+        echo "  hash       Compute hashes for existing builds in dist/"
+        echo "  sign       GPG sign hash manifest"
+        echo "  verify     Verify hashes and GPG signature"
         exit 1
         ;;
 esac
