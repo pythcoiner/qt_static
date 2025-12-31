@@ -37,7 +37,7 @@
 , at-spi2-core
 , libinput
 , mtdev
-, systemdLibs  # for libudev
+, systemd  # for libudev
 , zlib
 , pcre2
 , double-conversion
@@ -46,7 +46,6 @@
 , libpng
 , libjpeg
 , sqlite
-, icu
 , glib
 , libxshmfence
 }:
@@ -122,7 +121,7 @@ stdenv.mkDerivation rec {
     at-spi2-core
     libinput
     mtdev
-    systemdLibs
+    systemd
     zlib
     pcre2
     double-conversion
@@ -131,7 +130,6 @@ stdenv.mkDerivation rec {
     libpng
     libjpeg
     sqlite
-    icu
     glib
   ];
 
@@ -181,7 +179,7 @@ stdenv.mkDerivation rec {
     "-DQT_FEATURE_jpeg=ON"
 
     # Other features
-    "-DQT_FEATURE_icu=ON"
+    "-DQT_FEATURE_icu=OFF"
     "-DQT_FEATURE_pcre2=ON"
     "-DQT_FEATURE_ssl=ON"
     "-DQT_FEATURE_openssl=ON"

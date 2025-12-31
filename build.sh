@@ -9,46 +9,25 @@ TARGET="${1:-all}"
 echo "=== Qt6 Static Build ==="
 
 # ---- Phase 1: Fetch Qt source (only if needed) ----
-QT_BRANCH="qt_static_6.8.3"
-QT_REPO="https://github.com/pythcoiner/qt5.git"
+QT_TAG="v6.6.3"
+QT_REPO="https://code.qt.io/qt/qtbase.git"
 
-if [ ! -d "qt-src" ]; then
-    echo "Cloning Qt source..."
-    git clone --depth 1 -b "$QT_BRANCH" "$QT_REPO" qt-src
-    cd qt-src
-    git submodule update --init --progress qtbase
-    cd "$SCRIPT_DIR"
+if [ ! -d "qt-src/qtbase" ]; then
+    echo "Cloning qtbase from official Qt repo..."
+    mkdir -p qt-src
+    git clone --depth 1 -b "$QT_TAG" "$QT_REPO" qt-src/qtbase
 else
-    cd qt-src
+    cd qt-src/qtbase
 
-    # Check if we need to update the main repo
-    git fetch --depth 1 origin "$QT_BRANCH"
-    LOCAL_COMMIT=$(git rev-parse HEAD)
-    REMOTE_COMMIT=$(git rev-parse FETCH_HEAD)
+    # Check current tag
+    CURRENT_TAG=$(git describe --tags --exact-match 2>/dev/null || echo "none")
 
-    if [ "$LOCAL_COMMIT" != "$REMOTE_COMMIT" ]; then
-        echo "Updating Qt source..."
-        git checkout "$QT_BRANCH"
-        git pull origin "$QT_BRANCH"
+    if [ "$CURRENT_TAG" != "$QT_TAG" ]; then
+        echo "Switching to $QT_TAG..."
+        git fetch --depth 1 origin tag "$QT_TAG"
+        git checkout "$QT_TAG"
     else
-        echo "Qt source is up to date."
-    fi
-
-    # Check if qtbase submodule needs initialization or update
-    if [ ! -d "qtbase/.git" ] && [ ! -f "qtbase/.git" ]; then
-        echo "Initializing qtbase submodule..."
-        git submodule update --init --progress qtbase
-    else
-        # Check if submodule needs update
-        EXPECTED_COMMIT=$(git ls-tree HEAD qtbase | awk '{print $3}')
-        ACTUAL_COMMIT=$(git -C qtbase rev-parse HEAD 2>/dev/null || echo "none")
-
-        if [ "$EXPECTED_COMMIT" != "$ACTUAL_COMMIT" ]; then
-            echo "Updating qtbase submodule..."
-            git submodule update --progress qtbase
-        else
-            echo "qtbase submodule is up to date."
-        fi
+        echo "Qt source is up to date ($QT_TAG)."
     fi
 
     cd "$SCRIPT_DIR"

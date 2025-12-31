@@ -2,7 +2,7 @@
   description = "Qt 6 static build for Linux, Windows, and macOS";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-22.11";
   };
 
   outputs = { self, nixpkgs }:
@@ -17,7 +17,7 @@
       };
 
       # Qt version configuration
-      qtVersion = "6.8.3";
+      qtVersion = "6.6.3";
 
       # Local Qt source (use --impure flag to access non-git-tracked path)
       # QT_SRC_PATH env var set by build.sh, fallback to ./qt-src/qtbase
