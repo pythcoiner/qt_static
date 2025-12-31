@@ -3,6 +3,23 @@
 Reproducible Nix builds for Qt 6 static libraries targeting Linux, Windows,
 and macOS (all cross-compiled from Linux).
 
+## Branches
+
+```
++--------+------------+-------+------------------------------------------------+
+| Branch | Qt Version | glibc | Compatible Linux Distros                       |
++--------+------------+-------+------------------------------------------------+
+| 6.8.3  | 6.8.3      | 2.40+ | Ubuntu 24.10+, Fedora 41+, Arch, Debian Trixie |
+| 6.6.3  | 6.6.3      | 2.35+ | Ubuntu 22.04+, Debian 12+, Fedora 36+, RHEL 9+ |
++--------+------------+-------+------------------------------------------------+
+```
+
+Choose based on your target system's glibc version:
+```bash
+# Check glibc version on target system
+ldd --version
+```
+
 ## Quick Start
 
 ```bash
@@ -210,7 +227,7 @@ cmake -DCMAKE_PREFIX_PATH=/path/to/qt_static/dist/linux ..
 +-------------------+-------------------------+-------------------------+
 | Feature           | Linux                   | Windows                 |
 +-------------------+-------------------------+-------------------------+
-| Qt Version        | 6.8.3                   | 6.8.3                   |
+| Qt Version        | See branch table above  | See branch table above  |
 | Modules           | Core, Gui, Widgets      | Core, Gui, Widgets      |
 | Graphics          | OpenGL, Vulkan          | Direct2D, DirectWrite   |
 | Fonts             | Fontconfig, FreeType,   | FreeType, HarfBuzz      |
