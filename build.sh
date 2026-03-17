@@ -33,9 +33,35 @@ else
     cd "$SCRIPT_DIR"
 fi
 
-# Set absolute path for nix flake
+# ---- Fetch qtsvg source (only if needed) ----
+QT_SVG_REPO="https://code.qt.io/qt/qtsvg.git"
+
+if [ ! -d "qt-src/qtsvg" ]; then
+    echo "Cloning qtsvg from official Qt repo..."
+    mkdir -p qt-src
+    git clone --depth 1 -b "$QT_TAG" "$QT_SVG_REPO" qt-src/qtsvg
+else
+    cd qt-src/qtsvg
+
+    # Check current tag
+    CURRENT_TAG=$(git describe --tags --exact-match 2>/dev/null || echo "none")
+
+    if [ "$CURRENT_TAG" != "$QT_TAG" ]; then
+        echo "Switching qtsvg to $QT_TAG..."
+        git fetch --depth 1 origin tag "$QT_TAG"
+        git checkout "$QT_TAG"
+    else
+        echo "Qt SVG source is up to date ($QT_TAG)."
+    fi
+
+    cd "$SCRIPT_DIR"
+fi
+
+# Set absolute paths for nix flake
 export QT_SRC_PATH="$SCRIPT_DIR/qt-src/qtbase"
+export QT_SVG_SRC_PATH="$SCRIPT_DIR/qt-src/qtsvg"
 echo "Using Qt source: $QT_SRC_PATH"
+echo "Using Qt SVG source: $QT_SVG_SRC_PATH"
 
 # ---- Phase 2: Build functions ----
 compute_hashes() {
